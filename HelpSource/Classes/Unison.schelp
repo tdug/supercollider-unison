@@ -1,0 +1,152 @@
+TITLE:: Unison
+SUMMARY:: Unison/Detune/Blend/Phase made easy
+CATEGORIES:: Tuning
+
+DESCRIPTION::
+A class to help with unison voices, detuning, phasing, and amplification.
+
+This API is unstable. It's recommended to use keyword arguments and check the documentation frequently if this updates.
+
+CLASSMETHODS::
+
+METHOD:: new
+
+argument::voices
+The number of voices. See link::#-voices::
+
+argument::detune
+relative detune [0..), recommend under 0.05. This will affect the output of link::#-ratios::
+
+argument::blend
+amount to blend in detuned frequencies [0..1] This will affect the output of link::#-amp::
+
+argument::phaseRand
+amount to scale randomly generated phase values from 0.
+
+argument::mode
+options: [\linear, \exponential]. This will affect the distribution of link::#-ratios::
+
+returns::
+A Unison object.
+
+INSTANCEMETHODS::
+
+METHOD:: voices
+Set or get the number of Unison voices.
+
+Setting this will clear the cache of ratio and iphase data.
+
+This cannot be modulated.
+
+METHOD:: detune
+
+returns::
+Set or get detune value. See link::#-ratios:: for how the detune range is calculated.
+
+Setting this will clear the cache of ratio and iphase data.
+
+METHOD:: blend
+
+returns::
+Set or get blend value. A number between 0 and 1.
+
+Setting this will set the value at the extremities of link::#-amp::. A value of 1 will make link::#-amp:: return an array of all 1s. A value of 0 will make link::#-amp:: have 0s on the ends.
+
+METHOD:: phaseRand
+Set or get phaseRand value. A number between 0 and 1.
+
+Setting this will set a multiplier to randomize phase values from, generated from link::#-iphase::.
+
+METHOD:: ratios
+
+returns::
+A list of length `voices` of frequency multipliers centering around 1.
+More specifically, an exponential range between (1.0+detune).reciprocal and (1.0+detune)
+This method caches the calculation, which is only reset when link::#-voices:: or link::#-detune:: is set.
+This method calls ".perfectShuffle" on the channels, to mix them for a more pleasant stereo effect.
+
+
+METHOD:: iphase
+
+argument::osc
+Oscillator to generate initial phases for.
+
+returns::
+A list of length `voices` of Rand(lo: 0, hi: `phaseRand`) UGens with ranges matching the oscillator.
+
+METHOD:: amp
+
+returns::
+A list of length `voices` of relative amplitudes, based on link::#-ratios:: and link::#-blend::.
+
+
+EXAMPLES::
+
+getting default values:
+code::
+(
+    var unison = Unison();
+    unison.ratios.postln;
+    unison.iphase.postln;
+    unison.amp.postln;
+)
+::
+
+getting the unusual iphases for LFTri:
+code::
+(
+    var unison = Unison();
+    unison.iphase(LFTri).postln;
+)
+::
+
+changing the voice count:
+code::
+(   // Do not modulate `voices` inside a Synth. It will not work.
+    // In general, `voices` should not be an argument for a SynthDef, nor modified by an argument.
+    // You may change it to re-use a variable, but only for use on new inputs.
+    var unison = Unison(3);
+    [unison.ratios.size, unison.iphase.size].postln;
+    unison.voices = 2;
+    [unison.ratios.size, unison.iphase.size].postln;
+)
+::
+
+in a SynthDef:
+code::
+// Initialize SynthDef
+(
+SynthDef(\help_Unison_supersaw, {
+    arg freq=440, amp=0.2, gate=1, out=0;
+
+    // create the Unison instance
+    var unison = Unison(voices: 7);
+    
+    var env = EnvGen.kr(Env.adsr(releaseTime: 0.25), gate: gate, doneAction: 2);
+    
+    // This part is the key part to pay attention to.
+    var sig = LFSaw.ar(
+        freq: freq * unison.ratios,
+        iphase: unison.iphase(LFSaw),
+        mul: unison.amp
+    );
+
+    sig = RLPF.ar(sig, freq * env.linexp(0, 1, 3, 8));
+
+    sig = Splay.ar(sig);
+    sig = sig * env * amp;
+
+    Out.ar(out, sig);
+}).add;
+)
+
+// Play SynthDef
+(
+Pbind(
+    \instrument, \help_Unison_supersaw,
+    \dur, 0.25,
+    \amp, 0.3,
+    \degree, Pseq([0,0,0,2,0,5,0,7], 4),
+).play;
+)
+::

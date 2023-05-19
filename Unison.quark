@@ -1,0 +1,6 @@
+{
+    "name": "Unison",
+    "description": "Some helpers to implement Unison",
+    "version": "0.0.1",
+    "author": "Tom Dugovic"
+}
