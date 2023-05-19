@@ -1,6 +1,8 @@
 (
-    \name: "Unison",
-    \description: "Some helpers to implement Unison",
-    \version: "0.0.1",
-    \author: "tdug"
+    name: "Unison",
+    description: "Some helpers to implement Unison",
+    version: "0.0.2",
+    schelp: "Unison",
+    author: "tdug",
+    license: "GPL"
 )
